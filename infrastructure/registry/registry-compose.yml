@@ -1,0 +1,110 @@
+db:
+  environment:
+    MYSQL_DATABASE: portus
+    MYSQL_PASSWORD: password00
+    MYSQL_ROOT_PASSWORD: password00
+    MYSQL_USER: portus
+  labels:
+    registry.portus.db: '1'
+  tty: true
+  image: mysql:5.7.10
+  volumes:
+  - /var/docker-registry/db:/var/lib/mysql
+  stdin_open: true
+sslproxy:
+  labels:
+    io.rancher.scheduler.affinity:container_label_soft: registry.portus.db=1
+  tty: true
+  image: nginx:1.9.9
+  links:
+  - portus:portus
+  volumes:
+  - /var/docker-registry/certs:/etc/nginx/certs:ro
+  - /var/docker-registry/proxy:/etc/nginx/conf.d:ro
+  stdin_open: true
+lb:
+  ports:
+  - 5000:5000/tcp
+  - 443:443/tcp
+  labels:
+    io.rancher.scheduler.global: 'true'
+    io.rancher.scheduler.affinity:not_host_label: registry.enabled=false
+    io.rancher.loadbalancer.target.sslproxy: 443=443
+    io.rancher.loadbalancer.target.registry: 5000=5000
+  tty: true
+  image: rancher/load-balancer-service
+  links:
+  - sslproxy:sslproxy
+  - registry:registry
+  stdin_open: true
+registry:
+  environment:
+    REGISTRY_AUTH: token
+    REGISTRY_AUTH_TOKEN_ISSUER: registry
+    REGISTRY_AUTH_TOKEN_REALM: https://registry:443/v2/token
+    REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE: /certs/registry.crt
+    REGISTRY_AUTH_TOKEN_SERVICE: registry:5000
+    REGISTRY_HTTP_SECRET: httpsecret
+    REGISTRY_HTTP_TLS_CERTIFICATE: /certs/registry.crt
+    REGISTRY_HTTP_TLS_KEY: /certs/registry.key
+    REGISTRY_LOG_LEVEL: warn
+    REGISTRY_NOTIFICATIONS_ENDPOINTS: |
+      - name: portus
+        url: http://portus:3000/v2/webhooks/events
+        timeout: 500
+        threshold: 5
+        backoff: 1
+    REGISTRY_STORAGE_DELETE_ENABLED: 'true'
+  tty: true
+  image: registry:2.3.1
+  links:
+  - portus:portus
+  volumes:
+  - /var/docker-registry/certs:/certs
+  - /var/docker-registry/data:/var/lib/registry
+  stdin_open: true
+portus:
+  environment:
+    PORTUS_CHECK_SSL_USAGE_ENABLED: 'true'
+    PORTUS_GRAVATAR_ENABLED: 'true'
+    PORTUS_KEY_PATH: /certs/registry.key
+    PORTUS_LDAP_AUTHENTICATION_BIND_DN: ou=portus,dc=company,dc=com
+    PORTUS_LDAP_AUTHENTICATION_ENABLED: 'false'
+    PORTUS_LDAP_AUTHENTICATION_PASSWORD: password
+    PORTUS_LDAP_BASE: ou=People,dc=company,dc=com
+    PORTUS_LDAP_ENABLED: 'false'
+    PORTUS_LDAP_GUESS_EMAIL_ATTR: mail
+    PORTUS_LDAP_GUESS_EMAIL_ENABLED: 'true'
+    PORTUS_LDAP_HOSTNAME: ldap.company.com
+    PORTUS_LDAP_METHOD: starttls
+    PORTUS_LDAP_PORT: '389'
+    PORTUS_LDAP_UID: cn
+    PORTUS_MACHINE_FQDN: registry
+    PORTUS_PASSWORD: password00
+    PORTUS_PORT: '443'
+    PORTUS_PRODUCTION_DATABASE: portus
+    PORTUS_PRODUCTION_HOST: db
+    PORTUS_PRODUCTION_PASSWORD: password00
+    PORTUS_PRODUCTION_USERNAME: portus
+    PORTUS_SECRET_KEY_BASE: password00
+    PORTUS_SMTP_ENABLED: 'false'
+    REGISTRY_HOSTNAME: registry
+    REGISTRY_NAME: Registry
+    REGISTRY_PORT: '5000'
+    REGISTRY_SSL_ENABLED: 'true'
+  labels:
+    registry.portus.app: '1'
+    io.rancher.container.pull_image: always
+    io.rancher.scheduler.affinity:container_label_soft: registry.portus.db=1
+  tty: true
+  image: sshipway/portus:2.0.5
+  links:
+  - db:db
+  volumes:
+  - /var/docker-registry/certs:/certs
+  - /var/docker-registry/proxy:/etc/nginx/conf.d
+  stdin_open: true
+
+
+  ######
+  ## user:admin, pass:password00
