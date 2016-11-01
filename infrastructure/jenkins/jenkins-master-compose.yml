@@ -1,0 +1,27 @@
+jenkins-master:
+  ports:
+  - 8080/tcp
+  - 50000/tcp
+  labels:
+    io.rancher.container.pull_image: always
+  tty: true
+  image: jenkins:alpine
+  volumes:
+    - jenkins-master:/var/jenkins_home
+  stdin_open: true
+jenkins-master-lob:
+  ports:
+  - 10086:8080
+  - 50000:50000
+  labels:
+    for: jenkins-master
+  tty: true
+  image: rancher/load-balancer-service
+  links:
+  - jenkins-master:jenkins-master
+  stdin_open: true
+
+#### need to install
+# - plugins
+# - settings like user
+# -
