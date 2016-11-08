@@ -1,0 +1,12 @@
+version: '2'
+services:
+    rancher-server:
+      image: rancher/server
+      ports:
+        - 8080:8080
+      restart: always
+      volumes:
+        - rancher-server:/var/lib/mysql
+volumes:
+  rancher-server:
+    driver: local
