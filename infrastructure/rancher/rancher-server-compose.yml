@@ -1,7 +1,7 @@
 version: '2'
 services:
     rancher-server:
-      image: rancher/server
+      image: rancher/server:v1.2.0-pre3
       ports:
         - 8080:8080
       restart: always
@@ -9,4 +9,4 @@ services:
         - rancher-server:/var/lib/mysql
 volumes:
   rancher-server:
-    driver: local
+    external: true
